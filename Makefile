@@ -43,7 +43,7 @@ override LLVM_CMAKE_FLAGS += -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
 		    -DCMAKE_OSX_DEPLOYMENT_TARGET=10.12
 endif
 
-TARGETS = wasm32-wasi wasm32-wasip1 wasm32-wasip2 wasm32-wasip1-threads wasm32-wasi-threads
+TARGETS = wasm64-wasi wasm64-wasip1 wasm64-wasip1-threads wasm64-wasi-threads
 
 # Only the major version is needed for Clang, see https://reviews.llvm.org/D125860.
 CLANG_VERSION=$(shell $(VERSION_SCRIPT) llvm-major --llvm-dir=$(LLVM_PROJ_DIR))
@@ -88,7 +88,7 @@ build/llvm.BUILT:
 		-DLLVM_INCLUDE_BENCHMARKS=OFF \
 		-DLLVM_INCLUDE_EXAMPLES=OFF \
 		-DLLVM_TARGETS_TO_BUILD=WebAssembly \
-		-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-wasi \
+		-DLLVM_DEFAULT_TARGET_TRIPLE=wasm64-wasi \
 		-DLLVM_ENABLE_PROJECTS="lld;clang;clang-tools-extra" \
 		$(if $(patsubst 9,,$(CLANG_VERSION)), \
 	             $(if $(patsubst 10,,$(CLANG_VERSION)), \
@@ -130,14 +130,14 @@ WASI_LIBC_MAKEFLAGS = \
 	AR=$(BUILD_PREFIX)/bin/llvm-ar \
 	NM=$(BUILD_PREFIX)/bin/llvm-nm \
 	SYSROOT=$(BUILD_PREFIX)/share/wasi-sysroot \
-	TARGET_TRIPLE=$(1)
+	TARGET_TRIPLE=$(1) \
+	WASM64=yes
 
 build/wasi-libc.BUILT: build/compiler-rt.BUILT
-	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm32-wasi) default libc_so
-	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm32-wasip1) default libc_so
-	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm32-wasip2) WASI_SNAPSHOT=p2 default libc_so
-	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm32-wasi-threads) THREAD_MODEL=posix
-	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm32-wasip1-threads) THREAD_MODEL=posix
+	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm64-wasi) default libc_so
+	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm64-wasip1) default libc_so
+	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm64-wasi-threads) THREAD_MODEL=posix
+	$(MAKE) $(call WASI_LIBC_MAKEFLAGS,wasm64-wasip1-threads) THREAD_MODEL=posix
 	touch build/wasi-libc.BUILT
 
 build/compiler-rt.BUILT: build/llvm.BUILT
@@ -168,7 +168,6 @@ build/compiler-rt.BUILT: build/llvm.BUILT
 	# Install clang-provided headers.
 	cp -R $(ROOT_DIR)/build/llvm/lib/clang $(BUILD_PREFIX)/lib/
 	cp -R $(BUILD_PREFIX)/lib/clang/$(CLANG_VERSION)/lib/wasi $(BUILD_PREFIX)/lib/clang/$(CLANG_VERSION)/lib/wasip1
-	cp -R $(BUILD_PREFIX)/lib/clang/$(CLANG_VERSION)/lib/wasi $(BUILD_PREFIX)/lib/clang/$(CLANG_VERSION)/lib/wasip2
 	touch build/compiler-rt.BUILT
 
 # Flags for libcxx and libcxxabi.
@@ -238,11 +237,10 @@ define BUILD_LIBCXX
 endef
 
 build/libcxx.BUILT: build/llvm.BUILT build/wasi-libc.BUILT
-	$(call BUILD_LIBCXX,OFF,ON,wasm32-wasi)
-	$(call BUILD_LIBCXX,OFF,ON,wasm32-wasip1)
-	$(call BUILD_LIBCXX,OFF,ON,wasm32-wasip2)
-	$(call BUILD_LIBCXX,ON,OFF,wasm32-wasi-threads,-pthread)
-	$(call BUILD_LIBCXX,ON,OFF,wasm32-wasip1-threads,-pthread)
+	$(call BUILD_LIBCXX,OFF,ON,wasm64-wasi)
+	$(call BUILD_LIBCXX,OFF,ON,wasm64-wasip1)
+	$(call BUILD_LIBCXX,ON,OFF,wasm64-wasi-threads,-pthread)
+	$(call BUILD_LIBCXX,ON,OFF,wasm64-wasip1-threads,-pthread)
 	# As of this writing, `clang++` will ignore the above include dirs unless this one also exists:
 	mkdir -p $(BUILD_PREFIX)/share/wasi-sysroot/include/c++/v1
 	touch build/libcxx.BUILT
